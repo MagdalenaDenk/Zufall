@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Summentreppe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=ABeeZee:ital@0;1&display=swap">
+<style>
+/* Layout: Spielplan wie auf dem Arbeitsblatt – elf Spalten (2 bis 12) mit Kreisen und ×2-Ring, rechts daneben Würfel und Spielstand */
+:root{
+  --paper:#f6f3e7; --card:#fffdf6; --col:#eff2e8; --col-line:#6e8c5a; --sage:#9cb380; --sage-soft:#e2ead6;
+  --on-sage:#22402a; --forest:#1e6b37; --ink:#2e3a2e; --muted:#66745f; --line:#d9d2b8; --mustard:#e0ad35;
+  --pA:#1e6b37; --pA-edge:#0f4a25; --pB:#f2b01e; --pB-edge:#c98d0e; --hole:#ffffff; --bad:#c0541f; --shadow:rgba(60,70,40,.14);
+  --f:"ABeeZee","Trebuchet MS",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#18211a; --card:#212c23; --col:#26332a; --col-line:#7f9c6a; --sage:#3d5a3b; --sage-soft:#2a3a2a;
+  --on-sage:#eef4e2; --forest:#9fd28f; --ink:#e8eedc; --muted:#a8b59d; --line:#3a4a3c; --mustard:#e8bc4e;
+  --pA:#2f8c4b; --pA-edge:#a6d99a; --pB:#f2b01e; --pB-edge:#ffd977; --hole:#18211a; --bad:#ef8a55; --shadow:rgba(0,0,0,.35); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#18211a; --card:#212c23; --col:#26332a; --col-line:#7f9c6a; --sage:#3d5a3b; --sage-soft:#2a3a2a;
+  --on-sage:#eef4e2; --forest:#9fd28f; --ink:#e8eedc; --muted:#a8b59d; --line:#3a4a3c; --mustard:#e8bc4e;
+  --pA:#2f8c4b; --pA-edge:#a6d99a; --pB:#f2b01e; --pB-edge:#ffd977; --hole:#18211a; --bad:#ef8a55; --shadow:rgba(0,0,0,.35); color-scheme:dark}
+
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--f);font-size:16.5px;line-height:1.45}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--mustard);outline-offset:2px;border-radius:8px}
+h1,h2,h3{font-family:var(--f);color:var(--forest);text-wrap:balance;margin:0;font-weight:400}
+h2{font-size:clamp(1.35rem,2.6vw,1.85rem)}
+p{margin:0}
+.wrap{max-width:1320px;margin:0 auto;padding-inline:16px;padding-block:14px 40px;display:flex;flex-direction:column;gap:18px}
+
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;background:var(--sage);border-radius:10px;padding:8px 12px;border-bottom:3px solid var(--mustard);box-shadow:0 2px 0 var(--shadow)}
+.top img{width:46px;height:46px;flex:none}
+.top h1{flex:1;min-width:0;font-size:clamp(1.15rem,2.4vw,1.7rem);color:var(--on-sage);text-align:center}
+.top .tools{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:640px){.top .tools{width:100%;justify-content:flex-start}.top h1{flex-basis:calc(100% - 60px);text-align:left}}
+.ibtn{border:0;background:color-mix(in srgb,var(--card) 70%,transparent);color:var(--on-sage);border-radius:999px;padding:6px 12px;font-size:.9rem;display:inline-flex;gap:6px;align-items:center}
+.ibtn:hover{background:var(--card)}
+.ibtn svg{width:18px;height:18px}
+
+.steps{display:flex;gap:6px;flex-wrap:wrap;list-style:none;margin:0;padding:0}
+.steps li{flex:1 1 140px}
+.steps button{width:100%;border:2px solid var(--line);background:var(--card);border-radius:12px;padding:8px 10px;display:flex;gap:8px;align-items:center;color:var(--muted);text-align:left}
+.steps .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--sage-soft);color:var(--forest);flex:none}
+.steps button[aria-current="step"]{border-color:var(--sage);color:var(--forest);background:var(--sage-soft)}
+.steps button[aria-current="step"] .n{background:var(--forest);color:var(--card)}
+.steps button:disabled{opacity:.5;cursor:default}
+
+.phase{display:flex;flex-direction:column;gap:16px}
+.lead{color:var(--muted);max-width:64ch}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.spread{justify-content:space-between}
+.btn{border:0;border-radius:14px;padding:12px 20px;font-size:1.05rem;background:var(--card);color:var(--forest);box-shadow:0 0 0 2px var(--line) inset;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{box-shadow:0 0 0 2px var(--sage) inset}
+.btn.primary{background:var(--forest);color:var(--card);box-shadow:0 3px 0 color-mix(in srgb,var(--forest) 60%,#000)}
+.btn.primary:active{transform:translateY(2px);box-shadow:0 1px 0 color-mix(in srgb,var(--forest) 60%,#000)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.small{padding:7px 12px;font-size:.93rem;border-radius:10px}
+.link{border:0;background:none;color:var(--muted);text-decoration:underline;text-underline-offset:3px;padding:4px}
+.hint{font-size:.88rem;color:var(--muted)}
+.callout{background:color-mix(in srgb,var(--mustard) 14%,var(--card));border-radius:14px;padding:12px 14px;border-left:5px solid var(--mustard)}
+
+/* Vorbereitung */
+.players{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:560px){.players{grid-template-columns:minmax(0,1fr)}}
+.pcard{background:var(--card);border-radius:16px;padding:14px;box-shadow:0 0 0 2px var(--line) inset;display:flex;gap:12px;align-items:center}
+.pcard input{flex:1;min-width:0;font-size:1.15rem;padding:9px 12px;border-radius:10px;border:2px solid var(--line);background:var(--paper)}
+.chip{width:var(--s,28px);height:var(--s,28px);border-radius:50%;flex:none;display:inline-grid;place-items:center;font-size:calc(var(--s,28px)*.38);color:#fff}
+.chip.A{background:var(--pA);box-shadow:inset 0 0 0 2px var(--pA-edge)}
+.chip.B{background:var(--pB);box-shadow:inset 0 0 0 2px var(--pB-edge);color:#3b2a00}
+.settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px}
+.setting{background:var(--card);border-radius:14px;padding:12px 14px;box-shadow:0 0 0 1.5px var(--line) inset;display:flex;flex-direction:column;gap:8px}
+.setting .lab{color:var(--forest)}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:0;border-radius:10px;padding:7px 12px;background:var(--sage-soft);color:var(--forest)}
+.seg button[aria-pressed="true"]{background:var(--forest);color:var(--card)}
+
+/* Spielplan */
+.game{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+@media (max-width:980px){.game{grid-template-columns:minmax(0,1fr)}}
+.board{background:var(--card);border-radius:18px;padding:10px;box-shadow:0 0 0 2px var(--line) inset;display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:clamp(3px,.7vw,8px)}
+.col{background:var(--col);border:1.5px solid var(--col-line);border-radius:8px;display:flex;flex-direction:column;align-items:center;padding:6px 2px 6px;gap:4px;position:relative;transition:box-shadow .2s,transform .2s;min-width:0}
+button.col{font:inherit;color:inherit}
+.col.tap{cursor:pointer}
+.betting .col{cursor:pointer}
+.col.tap:hover{box-shadow:0 0 0 3px var(--mustard)}
+.col.hilite{box-shadow:0 0 0 4px var(--mustard);transform:translateY(-3px)}
+.col.wrong{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.holes{display:flex;flex-direction:column-reverse;gap:clamp(2px,.5vw,5px);align-items:center;width:100%}
+.hole{width:min(78%,34px);aspect-ratio:1;border-radius:50%;background:var(--hole);box-shadow:inset 0 0 0 1.5px var(--col-line);display:grid;place-items:center;border:0;padding:0;position:relative}
+.hole.A{background:var(--pA);box-shadow:inset 0 0 0 2px var(--pA-edge)}
+.hole.B{background:var(--pB);box-shadow:inset 0 0 0 2px var(--pB-edge)}
+.hole.new{animation:pop .45s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{0%{transform:scale(.2)}100%{transform:scale(1)}}
+.hole.kickable{cursor:pointer;animation:wobble .9s ease-in-out infinite}
+@keyframes wobble{50%{transform:scale(1.15)}}
+.colnum{font-size:clamp(.95rem,2vw,1.55rem);color:var(--forest);border-top:1.5px solid var(--col-line);width:80%;text-align:center;padding-top:2px;font-variant-numeric:tabular-nums}
+.ring{width:min(82%,40px);aspect-ratio:1;border-radius:50%;border:1.5px dashed var(--col-line);display:grid;place-items:center;font-size:clamp(.55rem,1.1vw,.8rem);color:var(--col-line);background:none;padding:0}
+.ring.A{background:var(--pA);border:2px solid var(--pA-edge);color:#fff}
+.ring.B{background:var(--pB);border:2px solid var(--pB-edge);color:#3b2a00}
+.ring.pick{cursor:pointer}
+.ring.pick:hover{border-color:var(--mustard);border-width:3px;color:var(--forest)}
+
+.side{background:var(--card);border-radius:18px;padding:16px;box-shadow:0 0 0 2px var(--line) inset;display:flex;flex-direction:column;gap:14px}
+.turn{display:flex;align-items:center;gap:10px;font-size:1.15rem;color:var(--forest);background:var(--sage-soft);border-radius:12px;padding:10px 12px}
+.turn .chip{--s:34px}
+.dice{display:flex;gap:14px;justify-content:center;align-items:center;min-height:100px}
+.die{width:84px;height:84px;border-radius:17px;background:#fffef9;box-shadow:inset 0 -5px 0 #0001,0 0 0 2px #cfc6a8,0 6px 12px var(--shadow);display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:11px;gap:3px;flex:none}
+.die.two{background:#e7f0dc;box-shadow:inset 0 -5px 0 #0001,0 0 0 2px #a9bf92,0 6px 12px var(--shadow)}
+.die i{border-radius:50%;margin:2px;display:block}
+.die i.on{background:#2b2b2b;box-shadow:inset 0 -2px 0 #0006}
+.die.rolling{animation:tumble .12s linear infinite}
+@keyframes tumble{50%{transform:rotate(12deg) translateY(-5px)}}
+.die.mini{width:24px;height:24px;border-radius:5px;padding:3px;gap:0;box-shadow:0 0 0 1.3px #cfc6a8}
+.die.two.mini{box-shadow:0 0 0 1.3px #a9bf92}
+.die.mini i{margin:.5px}
+.plus{font-size:1.5rem;color:var(--muted)}
+.msg{background:var(--sage-soft);border-radius:12px;padding:10px 12px;min-height:3.4em;font-size:1.02rem}
+.msg b{color:var(--forest);font-weight:400;font-size:1.12em}
+.msg.bad{background:color-mix(in srgb,var(--bad) 14%,var(--card))}
+.score{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 10px;align-items:center}
+.score .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.score .pt{font-size:1.4rem;color:var(--forest);font-variant-numeric:tabular-nums}
+.score .chip{--s:22px}
+.sidefoot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+
+/* Setzen */
+.markers{display:flex;flex-direction:column;gap:8px}
+.mrow{display:flex;align-items:center;gap:10px}
+.mrow .nm{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mrow .chip{--s:34px;font-size:.8rem}
+.mrow .chip.used{opacity:.18}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;background:color-mix(in srgb,var(--paper) 55%,#0008);z-index:50;display:grid;place-items:center;padding:16px;overflow:auto}
+.sheet{background:var(--card);border-radius:22px;box-shadow:0 20px 50px #0004;padding:22px;max-width:760px;width:100%;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 32px);overflow:auto;position:relative}
+.sheet .close{position:absolute;top:10px;right:10px}
+.big{text-align:center;font-size:clamp(1.5rem,3.5vw,2.3rem)}
+.center{text-align:center}
+.final{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.final div{background:var(--sage-soft);border-radius:14px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.final .pt{font-size:2.2rem;color:var(--forest)}
+.final .win{box-shadow:0 0 0 3px var(--mustard) inset}
+.info h3{font-size:1.15rem;margin-top:4px}
+.info ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:3px}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:49;overflow:hidden}
+.confetti span{position:absolute;top:-30px;width:16px;height:16px;border-radius:50%;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(360deg)}}
+
+/* Auswertung */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:2px solid var(--line)}
+.tabs button{border:0;background:none;padding:10px 14px;color:var(--muted);border-bottom:4px solid transparent;margin-bottom:-2px}
+.tabs button[aria-selected="true"]{color:var(--forest);border-color:var(--mustard)}
+.impulse{background:var(--card);border-radius:22px;padding:clamp(18px,4vw,40px);box-shadow:0 0 0 2px var(--line) inset;display:flex;flex-direction:column;gap:18px;min-height:240px;justify-content:space-between}
+.impulse .q{font-size:clamp(1.35rem,3.3vw,2.4rem);line-height:1.25;color:var(--forest);text-wrap:balance}
+.impulse.key{box-shadow:0 0 0 3px var(--mustard) inset;background:color-mix(in srgb,var(--mustard) 12%,var(--card))}
+.impulse .tag{font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.impulse .note{color:var(--muted);max-width:60ch}
+.chart{background:var(--card);border-radius:18px;padding:14px 12px 10px;box-shadow:0 0 0 2px var(--line) inset;overflow-x:auto}
+.bars{display:grid;grid-template-columns:repeat(11,minmax(30px,1fr));gap:6px;align-items:end;min-width:420px}
+.bars .b{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:220px}
+.bars .v{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.bars .bar{width:100%;background:var(--forest);border-radius:6px 6px 2px 2px;transition:height .5s;min-height:2px}
+.bars .x{width:100%;border-top:2px solid var(--col-line);padding-top:4px;text-align:center;color:var(--forest);font-size:1.05rem}
+.pairs{display:grid;grid-template-columns:repeat(11,minmax(46px,1fr));gap:6px;align-items:end;min-width:560px}
+.pcol{display:flex;flex-direction:column-reverse;align-items:center;gap:4px;border:0;background:none;padding:0}
+.pcol .pair{display:flex;gap:2px;background:var(--col);border-radius:6px;padding:3px;box-shadow:inset 0 0 0 1px var(--col-line)}
+.pcol .x{border-top:2px solid var(--col-line);width:100%;padding-top:4px;text-align:center;color:var(--forest);font-size:1.05rem}
+.pcol .cnt{font-size:.82rem;color:var(--muted)}
+.pcol .q{width:56px;height:30px;border:1.5px dashed var(--col-line);border-radius:6px;display:grid;place-items:center;color:var(--muted)}
+.sumtable{border-collapse:collapse;font-variant-numeric:tabular-nums}
+.sumtable th,.sumtable td{border:1px solid var(--line);padding:6px 10px;text-align:center}
+.sumtable th{color:var(--forest);font-weight:400;background:var(--sage-soft)}
+.res{display:flex;flex-direction:column;gap:8px}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.01ms!important;transition-duration:.05ms!important}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <img id="logo" alt="froschkönigin">
+    <h1>Summentreppe</h1>
+    <div class="tools">
+      <a class="ibtn" href="index.html" style="text-decoration:none">← Alle Spiele</a>
+      <button class="ibtn" id="btnSound" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path id="soundWave" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg><span>Ton an</span></button>
+      <button class="ibtn" id="btnFull"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Vollbild</span></button>
+      <button class="ibtn" id="btnInfo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>Für Lehrpersonen</span></button>
+    </div>
+  </header>
+
+  <ol class="steps" id="steps">
+    <li><button data-go="prep"><span class="n">1</span>Vorbereiten</button></li>
+    <li><button data-go="bet"><span class="n">2</span>Summen setzen</button></li>
+    <li><button data-go="play"><span class="n">3</span>Spielen</button></li>
+    <li><button data-go="talk"><span class="n">4</span>Gesprächskreis</button></li>
+  </ol>
+
+  <!-- 1 Vorbereiten -->
+  <section class="phase" id="ph-prep">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <h2>Wer spielt heute?</h2>
+      <p class="lead">Zwei Kinder spielen gegeneinander. Ihr könnt eure Namen eintragen.</p>
+    </div>
+    <div class="players">
+      <label class="pcard"><span class="chip A" style="--s:40px"></span><input id="nameA" type="text" maxlength="16" placeholder="Kind A" aria-label="Name Kind A (grün)"></label>
+      <label class="pcard"><span class="chip B" style="--s:40px"></span><input id="nameB" type="text" maxlength="16" placeholder="Kind B" aria-label="Name Kind B (gelb)"></label>
+    </div>
+    <div class="settings">
+      <div class="setting"><span class="lab">Punktewert</span><div class="seg" id="segPts"></div><span class="hint" id="ptsHint"></span></div>
+      <div class="setting"><span class="lab">Wie viele Summen verdoppeln?</span><div class="seg" id="segBets"></div><span class="hint" id="betsHint"></span></div>
+      <div class="setting"><span class="lab">Wegkicken</span><div class="seg" id="segKick"></div><span class="hint" id="kickHint"></span></div>
+      <div class="setting"><span class="lab">Kreise pro Summe</span><div class="seg" id="segH"></div><span class="hint" id="hHint"></span></div>
+      <div class="setting"><span class="lab">Würfel</span><div class="seg" id="segDie"></div><span class="hint" id="dieHint"></span></div>
+      <div class="setting"><span class="lab">Summe finden</span><div class="seg" id="segSelf"></div><span class="hint" id="selfHint"></span></div>
+    </div>
+    <div class="row" style="justify-content:flex-end"><button class="btn primary" id="toBet">Weiter: Summen setzen →</button></div>
+  </section>
+
+  <!-- 2+3 Spielplan (Setzen und Spielen) -->
+  <section class="phase" id="ph-board" hidden>
+    <div class="game">
+      <div class="board" id="board" aria-label="Spielplan"></div>
+      <aside class="side" id="side"></aside>
+    </div>
+    <p class="hint" id="boardHint"></p>
+  </section>
+
+  <!-- 4 Gesprächskreis -->
+  <section class="phase" id="ph-talk" hidden>
+    <div class="row spread">
+      <h2>Gesprächskreis</h2>
+      <div class="row"><button class="btn small" id="newGame">Neues Spiel</button></div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="res" aria-selected="true">Unser Spiel</button>
+      <button role="tab" data-tab="imp" aria-selected="false">Impulse</button>
+      <button role="tab" data-tab="pairs" aria-selected="false">Würfelpaare</button>
+      <button role="tab" data-tab="sim" aria-selected="false">Viele Würfe</button>
+    </div>
+    <div id="tab-res" class="phase"></div>
+    <div id="tab-imp" class="phase" hidden><div class="impulse" id="impulse"></div></div>
+    <div id="tab-pairs" class="phase" hidden>
+      <p class="lead">Stellt euch einen weißen und einen grünen Würfel vor. Mit welchen Würfelpaaren kann man jede Summe werfen? Vermutet zuerst, dann tippt eine Summe an.</p>
+      <div class="chart"><div class="pairs" id="pairs"></div></div>
+      <div class="row"><button class="btn small" id="pairsAll">Alle aufdecken</button><button class="btn small" id="pairsNone">Wieder zudecken</button></div>
+      <p class="callout" id="pairsNote" hidden>Insgesamt gibt es 36 Würfelpaare. Für die 7 gibt es 6 Wege, für die 2 und die 12 nur je einen. Die Treppe sieht von beiden Seiten gleich aus: 2 und 12, 3 und 11, 4 und 10 … haben gleich viele Wege.</p>
+    </div>
+    <div id="tab-sim" class="phase" hidden>
+      <p class="lead">„Wenn wir ganz oft würfeln: Wie sieht die Treppe dann aus?“ Vermutet zuerst – dann lasst den Computer würfeln.</p>
+      <div class="row">
+        <button class="btn small" data-sim="36">36 Würfe</button>
+        <button class="btn small" data-sim="360">360 Würfe</button>
+        <button class="btn small primary" data-sim="3600">3600 Würfe</button>
+        <button class="link" id="simReset">Zurücksetzen</button>
+      </div>
+      <div class="chart"><div class="bars" id="simBars"></div></div>
+      <p class="hint" id="simNote"></p>
+    </div>
+  </section>
+</div>
+
+<div class="overlay" id="ovEnd" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="endT">
+    <h2 class="big" id="endT"></h2>
+    <p class="center hint">Bei jeder Summe liegt mindestens ein Plättchen – das Spiel ist aus.</p>
+    <div class="final" id="endScores"></div>
+    <p class="callout">Tipp aus der Handreichung: Lieber mehrere kurze Runden spielen und erst danach über die Treppenform sprechen.</p>
+    <div class="row" style="justify-content:center">
+      <button class="btn" id="endAgain">Noch eine Runde</button>
+      <button class="btn primary" id="endTalk">Zum Gesprächskreis</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ovInfo" hidden>
+  <div class="sheet info" role="dialog" aria-modal="true" aria-labelledby="infoT">
+    <button class="btn small close" data-close>Schließen</button>
+    <h2 id="infoT">Für Lehrpersonen</h2>
+    <p>Die Summentreppe macht sichtbar, dass Würfelsummen nicht gleich häufig fallen. Im Mittelpunkt steht der Weg <b>setzen – würfeln – beobachten – begründen</b>: Warum wird die Treppe in der Mitte höher – und warum gewinnt trotzdem nicht immer, wer auf die 7 gesetzt hat?</p>
+    <h3>Das können die Kinder lernen</h3>
+    <ul>
+      <li>zwei Würfelzahlen sicher und zügig im Kopf addieren</li>
+      <li>erkennen, dass die Summen 2 bis 12 unterschiedlich häufig gewürfelt werden</li>
+      <li>mit den möglichen Würfelpaaren begründen, warum die 7 häufiger fällt als die 2 oder die 12</li>
+      <li>die Symmetrie der Häufigkeiten rund um die 7 entdecken – die Treppenform</li>
+      <li>vor dem Spiel einschätzen, welche Summen sich zum Setzen lohnen</li>
+      <li>die Vermutung mit dem tatsächlichen Spielverlauf vergleichen</li>
+    </ul>
+    <h3>So wird gespielt</h3>
+    <ul>
+      <li>Beide setzen abwechselnd auf je drei Summen, jede nur einmal.</li>
+      <li>Abwechselnd mit zwei Würfeln würfeln, die Summe bilden und den untersten freien Kreis dieser Summe belegen.</li>
+      <li>Ist die Summe voll, darf ein gegnerisches Plättchen weggekickt werden.</li>
+      <li>Ende, wenn bei jeder Summe mindestens ein Feld besetzt ist. Plättchen auf gesetzten Summen zählen doppelt.</li>
+    </ul>
+    <h3>Differenzierung</h3>
+    <p>Für die ersten Schulstufen 1 bzw. 2 Punkte pro Feld, später die Summe bzw. deren Doppeltes. Leichterer Einstieg: ohne Wegkicken und nur eine Summe verdoppeln. Mit „Summe selbst finden“ tippen die Kinder die Spalte selbst an – so wird das Kopfrechnen geübt; nach zwei Fehlversuchen hilft das Spiel.</p>
+    <h3>In der Planarbeit</h3>
+    <p>Als Partnerstation mit „Echte Würfel“: Die Kinder würfeln mit zwei echten Würfeln und tippen die Spalte ihrer Summe an. Die drei Wunschsummen vorher notieren und danach vergleichen.</p>
+    <p class="hint">Namen und Einstellungen werden nur in diesem Browser gespeichert.</p>
+  </div>
+</div>
+<div class="confetti" id="confetti" aria-hidden="true"></div>
+
+<script>
+const LOGO = "data:image/webp;base64,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";
+const SUMS = [2,3,4,5,6,7,8,9,10,11,12];
+const PIPS = {1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+const WAYS = s => 6 - Math.abs(7 - s);
+const IMPULSES = [
+  {q:'Warum hast du auf genau diese drei Summen gesetzt?'},
+  {q:'Welche Summe ist am häufigsten gefallen – welche gar nicht?'},
+  {q:'Mit welchen Würfelpaaren kann man eine 7 werfen? Und eine 2?', note:'Im Reiter „Würfelpaare“ könnt ihr danach nachsehen.'},
+  {q:'Warum gibt es für die 7 mehr Möglichkeiten als für die 12?'},
+  {q:'Die 12 bringt verdoppelt 24 Punkte – lohnt sich das trotzdem?'},
+  {q:'Lohnt die 7 auch dann, wenn das andere Kind dort mitlegt?'},
+  {q:'Welche Summen sind gleich häufig – und warum sieht die Treppe von beiden Seiten gleich aus?'},
+  {q:'Wenn wir zehn Runden spielen: Würde die 7 immer vorne liegen?', note:'Im Reiter „Viele Würfe“ könnt ihr es ausprobieren.'},
+  {q:'Was müsste man tun, um sicher herauszufinden, welche Summe die besten Chancen hat?'},
+  {q:'Warum kann eine seltene Summe wie die 2 trotzdem einmal früher fallen als die 7?', key:true, note:'Darin steckt der Kern: Wahrscheinlichkeit beschreibt keine Gewissheit im Einzelversuch.'},
+];
+
+const S = {
+  phase:'prep', names:{A:'',B:''}, pts:'12', nBets:3, kick:true, H:12, dieMode:'screen', self:true, sound:true,
+  bets:{A:[],B:[]}, cols:{}, turn:'A', step:'roll', dice:null, tries:0, rolls:[], last:null, games:[],
+  imp:0, tab:'res', shown:{}, sim:{n:0,c:{}}, betTurn:'A', busy:false, over:false
+};
+const store = {
+  load(){ try{ const d=JSON.parse(localStorage.getItem('summentreppe-v1')||'{}');
+    for(const k of ['pts','nBets','kick','H','dieMode','self','sound']) if(d[k]!==undefined) S[k]=d[k];
+    if(d.names) S.names=d.names; }catch(e){} },
+  save(){ try{ localStorage.setItem('summentreppe-v1', JSON.stringify({pts:S.pts,nBets:S.nBets,kick:S.kick,H:S.H,dieMode:S.dieMode,self:S.self,sound:S.sound,names:S.names})); }catch(e){} }
+};
+const $ = s=>document.querySelector(s);
+const esc = t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const nm = p => esc(S.names[p].trim() || (p==='A'?'Kind A':'Kind B'));
+const other = p => p==='A'?'B':'A';
+const dieHTML = (n,cls='') => `<span class="die ${cls}" role="img" aria-label="${n}">${Array.from({length:9},(_,i)=>`<i class="${(PIPS[n]||[]).includes(i)?'on':''}"></i>`).join('')}</span>`;
+
+/* Ton */
+let AC=null;
+function ac(){ if(!S.sound) return null; try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended') AC.resume(); }catch(e){return null} return AC; }
+function tone(f,t0,d,type='sine',v=.1){ const c=ac(); if(!c) return; const o=c.createOscillator(),g=c.createGain(); o.type=type; o.frequency.setValueAtTime(f,c.currentTime+t0); g.gain.setValueAtTime(0,c.currentTime+t0); g.gain.linearRampToValueAtTime(v,c.currentTime+t0+.01); g.gain.exponentialRampToValueAtTime(.001,c.currentTime+t0+d); o.connect(g).connect(c.destination); o.start(c.currentTime+t0); o.stop(c.currentTime+t0+d+.02); }
+const sfx = { rattle(){ for(let i=0;i<8;i++) tone(170+Math.random()*280,i*.065,.05,'square',.035); }, place(){ tone(620,0,.1,'sine',.1); tone(930,.07,.12,'sine',.07); }, wrong(){ tone(260,0,.2,'triangle',.07); }, kick(){ tone(400,0,.08,'square',.06); tone(200,.08,.18,'square',.05); }, win(){ [523,659,784,1046].forEach((f,i)=>tone(f,i*.13,.35,'triangle',.11)); } };
+
+/* Punkte */
+function score(p){
+  let t=0;
+  for(const s of SUMS){ const base = S.pts==='12'?1:s; const m = S.bets[p].includes(s)?2:1; t += S.cols[s].filter(x=>x===p).length*base*m; }
+  return t;
+}
+
+/* Navigation */
+function canGo(p){
+  if(p==='prep') return true;
+  if(p==='bet') return S.phase!=='prep' || true;
+  if(p==='play') return S.bets.A.length===S.nBets && S.bets.B.length===S.nBets;
+  if(p==='talk') return S.rolls.length>0 || S.games.length>0;
+}
+function go(p){
+  if(!canGo(p)) return;
+  if(p==='bet' && S.phase==='prep') newRound();
+  S.phase=p;
+  $('#ph-prep').hidden = p!=='prep';
+  $('#ph-board').hidden = !(p==='bet'||p==='play');
+  $('#ph-talk').hidden = p!=='talk';
+  renderSteps();
+  if(p==='prep') renderPrep();
+  if(p==='bet'||p==='play') renderBoard();
+  if(p==='talk') renderTalk();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function renderSteps(){
+  document.querySelectorAll('#steps button').forEach(b=>{ const p=b.dataset.go; b.disabled=!canGo(p); if(p===S.phase) b.setAttribute('aria-current','step'); else b.removeAttribute('aria-current'); });
+}
+document.addEventListener('click',e=>{ const g=e.target.closest('[data-go]'); if(g){ go(g.dataset.go); return; } const c=e.target.closest('[data-close]'); if(c) c.closest('.overlay').hidden=true; });
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o && o.id!=='ovEnd') o.hidden=true; }));
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') $('#ovInfo').hidden=true;
+  if((e.code==='Space'||e.key===' ') && S.phase==='play' && S.dieMode==='screen' && S.step==='roll' && !document.querySelector('.overlay:not([hidden])') && !/INPUT/.test(document.activeElement.tagName)){ e.preventDefault(); roll(); }
+});
+
+/* 1 Vorbereiten */
+const OPTS = {
+  segPts:{key:'pts', items:[['12','1 und 2 Punkte'],['sum','Summe und Doppeltes']], hint:v=>v==='12'?'Jedes Plättchen zählt 1 Punkt, auf einer gesetzten Summe 2 Punkte.':'Jedes Plättchen zählt so viel wie seine Summe – auf einer gesetzten Summe das Doppelte. Ein Plättchen auf der 12 bringt also 24 Punkte.'},
+  segBets:{key:'nBets', items:[[3,'drei Summen'],[1,'eine Summe']], hint:v=>v===3?'Wie im Original: Jedes Kind setzt auf drei Summen.':'Leichterer Einstieg: nur eine Summe verdoppeln.'},
+  segKick:{key:'kick', items:[[true,'mit Wegkicken'],[false,'ohne']], hint:v=>v?'Ist eine Spalte voll, darf ein gegnerisches Plättchen weggekickt werden. Das eigene kommt an seinen Platz.':'Ist eine Spalte voll, passiert nichts – das nächste Kind ist dran.'},
+  segH:{key:'H', items:[[12,'12 Kreise'],[10,'10 Kreise']], hint:v=>v===12?'Wie auf dem Spielplan zum Ankreuzen (Variante A).':'Wie auf dem A3-Spielplan mit Plättchen (Variante B).'},
+  segDie:{key:'dieMode', items:[['screen','Am Bildschirm'],['real','Echte Würfel']], hint:v=>v==='screen'?'Das Kind tippt auf „Würfeln“ (oder drückt die Leertaste).':'Die Kinder würfeln mit zwei echten Würfeln und tippen die Spalte ihrer Summe an.'},
+  segSelf:{key:'self', items:[[true,'Kinder tippen die Summe'],[false,'automatisch']], hint:v=>v?'Die Kinder rechnen selbst und tippen die richtige Spalte an. Nach zwei Fehlversuchen hilft das Spiel.':'Das Spiel legt das Plättchen selbst in die richtige Spalte.'},
+};
+function renderPrep(){
+  $('#nameA').value=S.names.A; $('#nameB').value=S.names.B;
+  for(const [id,o] of Object.entries(OPTS)){
+    $('#'+id).innerHTML = o.items.map(([v,l])=>`<button data-v="${v}" aria-pressed="${S[o.key]===v}">${l}</button>`).join('');
+    $('#'+id.replace('seg','').toLowerCase()+'Hint').textContent = o.hint(S[o.key]);
+  }
+  const selfSet = $('#segSelf').closest('.setting'); selfSet.style.opacity = S.dieMode==='real'?.5:1;
+  if(S.dieMode==='real') $('#selfHint').textContent='Mit echten Würfeln tippen die Kinder die Spalte ohnehin selbst an.';
+}
+for(const [id,o] of Object.entries(OPTS)){
+  $('#'+id).addEventListener('click',e=>{ const b=e.target.closest('[data-v]'); if(!b) return; const raw=o.items.find(([v])=>String(v)===b.dataset.v)[0]; S[o.key]=raw; store.save(); renderPrep(); });
+}
+$('#nameA').addEventListener('input',e=>{ S.names.A=e.target.value; store.save(); });
+$('#nameB').addEventListener('input',e=>{ S.names.B=e.target.value; store.save(); });
+$('#toBet').onclick=()=>{ newRound(); S.phase='prep'; go('bet'); };
+
+function newRound(){
+  S.cols={}; SUMS.forEach(s=>S.cols[s]=Array(S.H).fill(null));
+  S.bets={A:[],B:[]}; S.betTurn='A'; S.turn=S.games.length%2?'B':'A'; S.step='roll'; S.dice=null; S.tries=0; S.rolls=[]; S.last=null; S.over=false; S.busy=false;
+}
+
+/* Spielplan */
+function renderBoard(){
+  const b=$('#board'); const betting = S.phase==='bet'; b.classList.toggle('betting', betting);
+  const tapCols = S.phase==='play' && S.step==='place';
+  b.innerHTML = SUMS.map(s=>{
+    const col=S.cols[s];
+    const holes = col.map((o,i)=>{
+      const isNew = S.last && S.last.s===s && S.last.i===i;
+      const kickable = S.step==='kick' && S.dice && S.dice.sum===s && o===other(S.turn);
+      const label = o ? (o==='A'?nm('A'):nm('B')) : 'frei';
+      return kickable ? `<button class="hole ${o} kickable" data-kick="${i}" aria-label="Plättchen von ${label} wegkicken"></button>` : `<span class="hole ${o||''} ${isNew?'new':''}" aria-hidden="true"></span>`;
+    }).join('');
+    const owner = S.bets.A.includes(s)?'A':S.bets.B.includes(s)?'B':'';
+    const canPick = betting && !owner && S.bets[S.betTurn].length<S.nBets;
+    const ring = canPick ? `<button class="ring pick" data-bet="${s}" aria-label="Auf die ${s} setzen">×2</button>` : `<span class="ring ${owner}" ${owner?`title="gesetzt von ${owner==='A'?nm('A'):nm('B')}"`:''}>×2</span>`;
+    const filled = col.filter(Boolean).length;
+    const tag = tapCols ? 'button' : 'div';
+    return `<${tag} class="col ${tapCols?'tap':''} ${S.hilite===s?'hilite':''}" data-col="${s}" ${tapCols?`aria-label="Spalte ${s}"`:''}><div class="holes">${holes}</div><div class="colnum">${s}</div>${ring}</${tag}>`;
+  }).join('');
+  renderSide();
+}
+function chip(p,txt=''){ return `<span class="chip ${p}">${txt}</span>`; }
+function renderSide(){
+  const side=$('#side');
+  if(S.phase==='bet'){
+    const done = S.bets.A.length===S.nBets && S.bets.B.length===S.nBets;
+    side.innerHTML = `
+      <div class="turn">${done?'Alle Bonusmarker liegen.':`${chip(S.betTurn)}<span><b>${nm(S.betTurn)}</b> setzt</span>`}</div>
+      <div class="msg">${done?'Schaut euch eure Summen noch einmal an. Warum habt ihr genau diese gewählt?':`Tippe auf einen ×2-Kreis unter einer Summe. Auf diese Summe zählen deine Plättchen doppelt. Jede Summe kann nur einmal gesetzt werden.`}</div>
+      <div class="markers">${['A','B'].map(p=>`<div class="mrow"><span class="nm">${nm(p)}</span>${Array.from({length:S.nBets},(_,i)=>`<span class="chip ${p} ${i<S.bets[p].length?'used':''}">×2</span>`).join('')}</div>`).join('')}</div>
+      <div class="sidefoot"><button class="link" id="betUndo" ${S.bets.A.length+S.bets.B.length?'':'disabled'}>Letzten Marker zurücknehmen</button></div>
+      <button class="btn primary" id="toPlay" ${done?'':'disabled'} style="justify-content:center">Spiel starten →</button>`;
+    $('#betUndo').onclick=undoBet; $('#toPlay').onclick=()=>go('play');
+    $('#boardHint').textContent='Tipp: Lasst die Kinder ihre Wahl kurz begründen, bevor gewürfelt wird.';
+    return;
+  }
+  const d = S.dice;
+  const diceHTML = S.dieMode==='screen'
+    ? `<div class="dice">${dieHTML(d?d.a:5,'one'+(S.rolling?' rolling':''))}<span class="plus">+</span>${dieHTML(d?d.b:2,'two'+(S.rolling?' rolling':''))}</div>
+       <button class="btn primary" id="btnRoll" style="justify-content:center;font-size:1.25rem" ${S.step==='roll'&&!S.over?'':'disabled'}>Würfeln</button>`
+    : '';
+  side.innerHTML = `
+    <div class="turn">${S.over?'Spiel beendet':`${chip(S.turn)}<span><b>${nm(S.turn)}</b> ist dran</span>`}</div>
+    ${diceHTML}
+    <div class="msg ${S.msgBad?'bad':''}" id="msg" aria-live="polite">${S.msg||''}</div>
+    <div class="score">${['A','B'].map(p=>`${chip(p)}<span class="nm">${nm(p)}</span><span class="pt">${score(p)}</span>`).join('')}</div>
+    <div class="sidefoot"><span class="hint">${S.rolls.length} ${S.rolls.length===1?'Wurf':'Würfe'}</span><button class="link" id="btnEnd">Spiel beenden</button></div>`;
+  if($('#btnRoll')) $('#btnRoll').onclick=roll;
+  $('#btnEnd').onclick=()=>endGame(true);
+  $('#boardHint').textContent='Während des Spiels vor allem beobachten – besprochen wird danach.';
+}
+function setMsg(html,bad=false){ S.msg=html; S.msgBad=bad; }
+
+/* Setzen */
+$('#board').addEventListener('click',e=>{
+  let bt=e.target.closest('[data-bet]');
+  if(!bt && S.phase==='bet'){ const c=e.target.closest('[data-col]'); if(c) bt=c.querySelector('[data-bet]'); }
+  if(bt && S.phase==='bet'){ const s=+bt.dataset.bet; S.bets[S.betTurn].push(s); tone(700,0,.1,'sine',.08);
+    const o=other(S.betTurn); if(S.bets[o].length<S.nBets) S.betTurn=o; renderBoard(); renderSteps(); return; }
+  const k=e.target.closest('[data-kick]');
+  if(k && S.phase==='play' && S.step==='kick'){ doKick(+k.dataset.kick); return; }
+  const c=e.target.closest('[data-col]');
+  if(c && S.phase==='play' && S.step==='place') tapCol(+c.dataset.col, c);
+});
+function undoBet(){
+  const a=S.bets.A.length, b=S.bets.B.length;
+  const p = a>b ? 'A' : 'B';
+  if(!S.bets[p].length) return;
+  S.bets[p].pop(); S.betTurn=p; renderBoard(); renderSteps();
+}
+
+/* Spielen */
+function startTurnMsg(){
+  if(S.dieMode==='screen') setMsg(`${nm(S.turn)}: Würfle mit beiden Würfeln.`);
+  else setMsg(`${nm(S.turn)}: Würfle mit zwei echten Würfeln, rechne die Summe aus und tippe auf die richtige Spalte.`);
+}
+function roll(){
+  if(S.step!=='roll'||S.busy||S.over) return;
+  S.busy=true; S.rolling=true; sfx.rattle();
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let k=0; const n=reduce?1:9;
+  renderSide();
+  const t=setInterval(()=>{
+    S.dice={a:1+Math.floor(Math.random()*6), b:1+Math.floor(Math.random()*6)}; S.dice.sum=S.dice.a+S.dice.b;
+    k++; if(k<n){ document.querySelectorAll('.side .die').forEach((el,i)=>{ const v=i?S.dice.b:S.dice.a; el.innerHTML=Array.from({length:9},(_,j)=>`<i class="${PIPS[v].includes(j)?'on':''}"></i>`).join(''); }); return; }
+    clearInterval(t); S.rolling=false; S.busy=false; S.tries=0;
+    if(S.self){ S.step='place'; setMsg(`Gewürfelt: <b>${S.dice.a} + ${S.dice.b}</b>. Rechne die Summe aus und tippe auf die richtige Spalte.`); renderBoard(); }
+    else { S.step='auto'; setMsg(`Gewürfelt: <b>${S.dice.a} + ${S.dice.b} = ${S.dice.sum}</b>.`); renderBoard(); setTimeout(()=>place(S.dice.sum),500); }
+  },75);
+}
+function tapCol(s, el){
+  if(S.dieMode==='real'){ S.dice={a:null,b:null,sum:s}; place(s); return; }
+  if(s===S.dice.sum){ S.hilite=null; place(s); return; }
+  S.tries++; sfx.wrong();
+  if(S.tries>=2){ S.hilite=S.dice.sum; setMsg(`Schau noch einmal: <b>${S.dice.a} + ${S.dice.b} = ${S.dice.sum}</b>. Tippe auf die leuchtende Spalte.`, true); }
+  else setMsg(`Das ist die ${s}. Rechne noch einmal: <b>${S.dice.a} + ${S.dice.b}</b> = ?`, true);
+  renderBoard();
+  const c=document.querySelector(`[data-col="${s}"]`); if(c){ c.classList.add('wrong'); setTimeout(()=>c.classList.remove('wrong'),450); }
+}
+function place(s){
+  S.rolls.push({s, p:S.turn}); S.hilite=null;
+  const col=S.cols[s]; const i=col.indexOf(null);
+  const pre = S.dieMode==='screen' ? `<b>${S.dice.a} + ${S.dice.b} = ${s}</b>. ` : `Summe <b>${s}</b>. `;
+  if(i>=0){ col[i]=S.turn; S.last={s,i}; sfx.place(); setMsg(pre+`Plättchen liegt auf der ${s}.`); return afterPlace(); }
+  if(S.kick && col.includes(other(S.turn))){ S.step='kick'; S.last=null; setMsg(pre+`Die ${s} ist voll! Tippe auf ein Plättchen von ${nm(other(S.turn))}, um es wegzukicken.`); renderBoard(); return; }
+  S.last=null; sfx.wrong(); setMsg(pre+`Die ${s} ist schon voll – diesmal kein Plättchen.`, true); afterPlace();
+}
+function doKick(i){
+  const s=S.dice.sum; S.cols[s][i]=S.turn; S.last={s,i}; sfx.kick();
+  setMsg(`Weggekickt! Das Plättchen von ${nm(other(S.turn))} kommt zurück in den Vorrat, ${nm(S.turn)} liegt jetzt auf der ${s}.`);
+  afterPlace();
+}
+function afterPlace(){
+  if(SUMS.every(s=>S.cols[s].some(Boolean))){ S.step='done'; renderBoard(); setTimeout(()=>endGame(false),700); return; }
+  S.turn=other(S.turn); S.step = S.dieMode==='screen' ? 'roll' : 'place';
+  const keep=S.msg; startTurnMsg(); S.msg = keep + '<br><span class="hint">Jetzt: ' + S.msg + '</span>';
+  renderBoard();
+}
+function endGame(manual){
+  if(S.over) return; S.over=true;
+  const a=score('A'), b=score('B');
+  S.games.push({A:a,B:b,rolls:S.rolls.slice(),bets:{A:S.bets.A.slice(),B:S.bets.B.slice()},cols:JSON.parse(JSON.stringify(S.cols)),pts:S.pts,manual});
+  $('#endT').textContent = a===b ? 'Unentschieden!' : `${a>b?S.names.A.trim()||'Kind A':S.names.B.trim()||'Kind B'} gewinnt!`;
+  $('#endScores').innerHTML = ['A','B'].map(p=>`<div class="${(p==='A'?a>b:b>a)?'win':''}">${chip(p)}<span>${nm(p)}</span><span class="pt">${p==='A'?a:b}</span><span class="hint">Punkte</span></div>`).join('');
+  $('#ovEnd').querySelector('.center').textContent = manual ? 'Das Spiel wurde vorzeitig beendet.' : 'Bei jeder Summe liegt mindestens ein Plättchen – das Spiel ist aus.';
+  $('#ovEnd').hidden=false; sfx.win(); confetti(); renderSteps(); renderSide();
+}
+function confetti(){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const c=$('#confetti'); c.innerHTML='';
+  for(let i=0;i<40;i++){ const s=document.createElement('span'); s.style.left=Math.random()*100+'%'; s.style.background=i%2?'#1e6b37':'#f2b01e'; s.style.animationDuration=(1.8+Math.random()*1.8)+'s'; s.style.animationDelay=(Math.random()*.6)+'s'; c.appendChild(s); }
+  setTimeout(()=>c.innerHTML='',4500);
+}
+$('#endAgain').onclick=()=>{ $('#ovEnd').hidden=true; newRound(); S.phase='prep'; go('bet'); };
+$('#endTalk').onclick=()=>{ $('#ovEnd').hidden=true; S.tab='res'; go('talk'); };
+$('#newGame').onclick=()=>{ newRound(); S.phase='prep'; go('bet'); };
+
+/* 4 Gesprächskreis */
+function renderTalk(){
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===S.tab));
+  ['res','imp','pairs','sim'].forEach(t=>$('#tab-'+t).hidden=t!==S.tab);
+  renderRes(); renderImpulse(); renderPairs(); renderSim();
+}
+document.querySelector('.tabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b){ S.tab=b.dataset.tab; renderTalk(); } });
+function barsHTML(counts, total){
+  const max=Math.max(1,...SUMS.map(s=>counts[s]||0));
+  return SUMS.map(s=>{ const v=counts[s]||0; return `<div class="b"><span class="v">${v}</span><div class="bar" style="height:${v/max*180}px"></div><span class="x">${s}</span></div>`; }).join('');
+}
+function renderRes(){
+  const el=$('#tab-res');
+  const g=S.games[S.games.length-1];
+  if(!g){ el.innerHTML='<p class="hint">Noch kein Spiel beendet.</p>'; return; }
+  const c={}; g.rolls.forEach(r=>c[r.s]=(c[r.s]||0)+1);
+  const allC={}; S.games.forEach(gg=>gg.rolls.forEach(r=>allC[r.s]=(allC[r.s]||0)+1));
+  const most = SUMS.filter(s=>(c[s]||0)===Math.max(...SUMS.map(x=>c[x]||0)));
+  el.innerHTML = `
+    <div class="final">${['A','B'].map(p=>`<div>${chip(p)}<span>${nm(p)}</span><span class="pt">${g[p]}</span><span class="hint">gesetzt: ${g.bets[p].join(', ')}</span></div>`).join('')}</div>
+    <h3 style="font-size:1.1rem">So oft ist jede Summe gefallen <span class="hint">(${g.rolls.length} Würfe in diesem Spiel)</span></h3>
+    <div class="chart"><div class="bars">${barsHTML(c)}</div></div>
+    <p class="hint">Am häufigsten: ${most.join(' und ')}. ${S.games.length>1?`Über alle ${S.games.length} Spiele zusammen: ${S.games.reduce((a,gg)=>a+gg.rolls.length,0)} Würfe.`:''}</p>
+    ${S.games.length>1?`<h3 style="font-size:1.1rem">Alle Spiele zusammen</h3><div class="chart"><div class="bars">${barsHTML(allC)}</div></div>`:''}`;
+}
+function renderImpulse(){
+  const it=IMPULSES[S.imp]; const el=$('#impulse'); el.className='impulse'+(it.key?' key':'');
+  el.innerHTML=`<span class="tag">${it.key?'Schlüsselfrage':'Impuls '+(S.imp+1)+' von '+IMPULSES.length}</span><p class="q">${esc(it.q)}</p>${it.note?`<p class="note">${esc(it.note)}</p>`:''}<div class="row spread"><button class="btn small" id="impPrev" ${S.imp===0?'disabled':''}>← Zurück</button><button class="btn small primary" id="impNext" ${S.imp===IMPULSES.length-1?'disabled':''}>Nächster Impuls →</button></div>`;
+  $('#impPrev').onclick=()=>{ S.imp=Math.max(0,S.imp-1); renderImpulse(); };
+  $('#impNext').onclick=()=>{ S.imp=Math.min(IMPULSES.length-1,S.imp+1); renderImpulse(); };
+}
+function renderPairs(){
+  $('#pairs').innerHTML = SUMS.map(s=>{
+    const pr=[]; for(let a=1;a<=6;a++){ const b=s-a; if(b>=1&&b<=6) pr.push([a,b]); }
+    const shown=!!S.shown[s];
+    const items = shown ? pr.map(([a,b])=>`<span class="pair">${dieHTML(a,'mini')}${dieHTML(b,'two mini')}</span>`).join('') : `<span class="q">?</span>`;
+    return `<button class="pcol" data-pair="${s}" aria-expanded="${shown}" aria-label="Würfelpaare für ${s}"><span class="x">${s}</span><span class="cnt">${shown?pr.length+(pr.length===1?' Weg':' Wege'):'&nbsp;'}</span>${items}</button>`;
+  }).join('');
+  $('#pairsNote').hidden = !SUMS.every(s=>S.shown[s]);
+}
+$('#pairs').addEventListener('click',e=>{ const b=e.target.closest('[data-pair]'); if(!b) return; const s=+b.dataset.pair; S.shown[s]=!S.shown[s]; tone(660,0,.08,'sine',.06); renderPairs(); });
+$('#pairsAll').onclick=()=>{ SUMS.forEach(s=>S.shown[s]=true); renderPairs(); };
+$('#pairsNone').onclick=()=>{ S.shown={}; renderPairs(); };
+function renderSim(){
+  $('#simBars').innerHTML = barsHTML(S.sim.c);
+  $('#simNote').textContent = S.sim.n ? `${S.sim.n.toLocaleString('de-AT')} Würfe insgesamt. Je öfter gewürfelt wird, desto deutlicher zeigt sich die Treppe.` : 'Noch nicht gewürfelt.';
+}
+document.querySelectorAll('[data-sim]').forEach(b=>b.onclick=()=>{ const k=+b.dataset.sim; for(let i=0;i<k;i++){ const s=2+Math.floor(Math.random()*6)+Math.floor(Math.random()*6); S.sim.c[s]=(S.sim.c[s]||0)+1; } S.sim.n+=k; tone(700,0,.08,'sine',.06); renderSim(); });
+$('#simReset').onclick=()=>{ S.sim={n:0,c:{}}; renderSim(); };
+
+/* Kopfleiste */
+$('#logo').src=LOGO;
+function renderSound(){ const b=$('#btnSound'); b.setAttribute('aria-pressed',S.sound); $('#soundWave').style.opacity=S.sound?1:.15; b.querySelector('span').textContent=S.sound?'Ton an':'Ton aus'; }
+$('#btnSound').onclick=()=>{ S.sound=!S.sound; store.save(); renderSound(); };
+$('#btnFull').onclick=()=>{ try{ if(document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(()=>{}); }catch(e){} };
+$('#btnInfo').onclick=()=>{ $('#ovInfo').hidden=false; };
+
+/* Start */
+store.load(); renderSound(); newRound(); go('prep');
+// Beim Wechsel in die Spielphase die erste Ansage setzen
+const _go=go; go=function(p){ if(p==='play' && S.phase!=='play'){ S.step = S.dieMode==='screen'?'roll':'place'; startTurnMsg(); } _go(p); };
+</script>
+
+</body>
+</html>
